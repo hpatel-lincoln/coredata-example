@@ -6,11 +6,17 @@
 //
 
 import UIKit
+import CoreData
 
 class NotesViewController: UIViewController {
   
-  private var notes: [Note] = []
+  private var resultsController: NSFetchedResultsController<Note>!
   private var selectedIndexPath: IndexPath?
+  
+  private var context: NSManagedObjectContext {
+    let delegate = UIApplication.shared.delegate as! AppDelegate
+    return delegate.persistentContainer.viewContext
+  }
   
   @IBOutlet private var notesTableView: UITableView!
   
@@ -22,6 +28,13 @@ class NotesViewController: UIViewController {
     
     notesTableView.delegate = self
     notesTableView.dataSource = self
+    notesTableView.rowHeight = UITableView.automaticDimension
+    notesTableView.estimatedRowHeight = 100
+  }
+  
+  override func viewWillAppear(_ animated: Bool) {
+    super.viewWillAppear(animated)
+    refresh()
   }
   
   @IBAction private func didTapAdd(sender: UIBarButtonItem) {
@@ -40,10 +53,27 @@ class NotesViewController: UIViewController {
         let indexPath = selectedIndexPath
       {
         noteViewController.delegate = self
-        noteViewController.noteToEdit = notes[indexPath.row]
+        let note = resultsController.object(at: indexPath)
+        noteViewController.noteToEdit = note
       }
     default:
       break
+    }
+  }
+  
+  private func refresh() {
+    let request = Note.fetchRequest()
+    let sort = NSSortDescriptor(key: #keyPath(Note.text), ascending: true)
+    request.sortDescriptors = [sort]
+    do {
+      resultsController = NSFetchedResultsController(fetchRequest: request,
+                                             managedObjectContext: context,
+                                             sectionNameKeyPath: nil,
+                                             cacheName: nil)
+      resultsController.delegate = self
+      try resultsController.performFetch()
+    } catch let error as NSError {
+      print("Could not fetch. \(error), \(error.userInfo)")
     }
   }
 }
@@ -59,13 +89,18 @@ extension NotesViewController: UITableViewDelegate {
 extension NotesViewController: UITableViewDataSource {
   
   func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-    return notes.count
+    guard
+      let sections = resultsController.sections,
+      let objects = sections[section].objects
+    else { return 0 }
+    
+    return objects.count
   }
   
   func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
     let cell = tableView.dequeueReusableCell(withIdentifier: "\(NoteViewCell.self)", for: indexPath) as! NoteViewCell
     cell.prepareForReuse()
-    let note = notes[indexPath.row]
+    let note = resultsController.object(at: indexPath)
     cell.notesLabel.text = note.text
     return cell
   }
@@ -73,8 +108,9 @@ extension NotesViewController: UITableViewDataSource {
   func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
     switch editingStyle {
     case .delete:
-      notes.remove(at: indexPath.row)
-      tableView.deleteRows(at: [indexPath], with: .automatic)
+      let note = resultsController.object(at: indexPath)
+      context.delete(note)
+      (UIApplication.shared.delegate as! AppDelegate).saveContext()
     default:
       break
     }
@@ -83,24 +119,39 @@ extension NotesViewController: UITableViewDataSource {
 
 extension NotesViewController: NoteViewControllerDelegate {
   
-  func noteViewController(_ noteViewController: NoteViewController, didAddNote note: Note) {
+  func noteViewControllerDidFinishAdding(_ noteViewController: NoteViewController) {
     self.dismiss(animated: true, completion: nil)
-    self.notes.append(note)
-    let indexPath = IndexPath(row: notes.count-1, section: 0)
-    self.notesTableView.insertRows(at: [indexPath], with: .automatic)
+    (UIApplication.shared.delegate as! AppDelegate).saveContext()
   }
   
-  func noteViewController(_ noteViewController: NoteViewController, didEditNote note: Note) {
+  func noteViewControllerDidFinishEditing(_ noteViewController: NoteViewController) {
     self.dismiss(animated: true, completion: nil)
-    
-    if let indexPath = selectedIndexPath {
-      notes[indexPath.row] = note
-      self.notesTableView.reloadRows(at: [indexPath], with: .automatic)
-      selectedIndexPath = nil
-    }
+    (UIApplication.shared.delegate as! AppDelegate).saveContext()
+    selectedIndexPath = nil
   }
   
   func noteViewControllerDidCancel(_ noteViewController: NoteViewController) {
     self.dismiss(animated: true, completion: nil)
+  }
+}
+
+extension NotesViewController: NSFetchedResultsControllerDelegate {
+  
+  func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange anObject: Any, at indexPath: IndexPath?, for type: NSFetchedResultsChangeType, newIndexPath: IndexPath?) {
+    
+    if let indexPath = indexPath ?? newIndexPath {
+      switch type {
+      case .insert:
+        notesTableView.insertRows(at: [indexPath], with: .automatic)
+      case .delete:
+        notesTableView.deleteRows(at: [indexPath], with: .automatic)
+      case .move:
+        notesTableView.reloadData()
+      case .update:
+        notesTableView.reloadRows(at: [indexPath], with: .automatic)
+      default:
+        break
+      }
+    }
   }
 }

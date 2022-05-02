@@ -6,10 +6,11 @@
 //
 
 import UIKit
+import CoreData
 
 protocol NoteViewControllerDelegate: AnyObject {
-  func noteViewController(_ noteViewController: NoteViewController, didAddNote note: Note)
-  func noteViewController(_ noteViewController: NoteViewController, didEditNote note: Note)
+  func noteViewControllerDidFinishAdding(_ noteViewController: NoteViewController)
+  func noteViewControllerDidFinishEditing(_ noteViewController: NoteViewController)
   func noteViewControllerDidCancel(_ noteViewController: NoteViewController)
 }
 
@@ -17,6 +18,11 @@ class NoteViewController: UIViewController {
   
   weak var delegate: NoteViewControllerDelegate?
   var noteToEdit: Note?
+  
+  private var context: NSManagedObjectContext {
+    let delegate = UIApplication.shared.delegate as! AppDelegate
+    return delegate.persistentContainer.viewContext
+  }
   
   @IBOutlet private var noteTextView: UITextView!
   @IBOutlet private var doneBarButton: UIBarButtonItem!
@@ -49,12 +55,13 @@ class NoteViewController: UIViewController {
   @IBAction private func didTapDone(sender: UIBarButtonItem) {
     guard let text = noteTextView.text else { return }
     
-    if var note = noteToEdit {
+    if let note = noteToEdit {
       note.text = text
-      delegate?.noteViewController(self, didEditNote: note)
+      delegate?.noteViewControllerDidFinishEditing(self)
     } else {
-      let note = Note(text: text)
-      delegate?.noteViewController(self, didAddNote: note)
+      let note = Note(entity: Note.entity(), insertInto: context)
+      note.text = text
+      delegate?.noteViewControllerDidFinishAdding(self)
     }
   }
   
