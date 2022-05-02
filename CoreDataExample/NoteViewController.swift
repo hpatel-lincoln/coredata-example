@@ -57,10 +57,12 @@ class NoteViewController: UIViewController {
     
     if let note = noteToEdit {
       note.text = text
+      note.lastUpdated = Date()
       delegate?.noteViewControllerDidFinishEditing(self)
     } else {
       let note = Note(entity: Note.entity(), insertInto: context)
       note.text = text
+      note.lastUpdated = Date()
       delegate?.noteViewControllerDidFinishAdding(self)
     }
   }

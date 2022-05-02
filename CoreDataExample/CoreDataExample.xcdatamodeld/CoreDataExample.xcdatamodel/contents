@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="19574" systemVersion="21D62" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
     <entity name="Note" representedClassName=".Note" syncable="YES">
+        <attribute name="lastUpdated" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="text" attributeType="String"/>
     </entity>
     <elements>
-        <element name="Note" positionX="-54" positionY="-9" width="128" height="44"/>
+        <element name="Note" positionX="-54" positionY="-9" width="128" height="59"/>
     </elements>
 </model>

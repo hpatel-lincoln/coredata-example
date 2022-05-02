@@ -10,6 +10,7 @@ import UIKit
 class NoteViewCell: UITableViewCell {
   
   @IBOutlet var notesLabel: UILabel!
+  @IBOutlet var lastUpdatedLabel: UILabel!
   
   override func awakeFromNib() {
     super.awakeFromNib()
@@ -19,5 +20,6 @@ class NoteViewCell: UITableViewCell {
   override func prepareForReuse() {
     super.prepareForReuse()
     notesLabel.text = nil
+    lastUpdatedLabel.text = nil
   }
 }

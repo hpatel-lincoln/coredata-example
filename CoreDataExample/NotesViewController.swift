@@ -63,7 +63,7 @@ class NotesViewController: UIViewController {
   
   private func refresh() {
     let request = Note.fetchRequest()
-    let sort = NSSortDescriptor(key: #keyPath(Note.text), ascending: true)
+    let sort = NSSortDescriptor(key: #keyPath(Note.lastUpdated), ascending: false)
     request.sortDescriptors = [sort]
     do {
       resultsController = NSFetchedResultsController(fetchRequest: request,
@@ -102,6 +102,7 @@ extension NotesViewController: UITableViewDataSource {
     cell.prepareForReuse()
     let note = resultsController.object(at: indexPath)
     cell.notesLabel.text = note.text
+    cell.lastUpdatedLabel.text = "Last Updated: \(note.lastUpdated.formatted())"
     return cell
   }
   

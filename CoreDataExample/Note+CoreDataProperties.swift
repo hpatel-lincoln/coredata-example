@@ -2,22 +2,25 @@
 //  Note+CoreDataProperties.swift
 //  CoreDataExample
 //
-//  Created by Hardik Patel on 4/30/22.
+//  Created by Hardik Patel on 5/2/22.
 //
 //
 
 import Foundation
 import CoreData
 
+
 extension Note {
-  
-  @nonobjc public class func fetchRequest() -> NSFetchRequest<Note> {
-    return NSFetchRequest<Note>(entityName: "Note")
-  }
-  
-  @NSManaged public var text: String
+
+    @nonobjc public class func fetchRequest() -> NSFetchRequest<Note> {
+        return NSFetchRequest<Note>(entityName: "Note")
+    }
+
+    @NSManaged public var text: String
+    @NSManaged public var lastUpdated: Date
+
 }
 
 extension Note : Identifiable {
-  
+
 }
