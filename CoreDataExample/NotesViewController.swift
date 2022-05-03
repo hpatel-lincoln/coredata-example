@@ -102,7 +102,9 @@ extension NotesViewController: UITableViewDataSource {
     cell.prepareForReuse()
     let note = resultsController.object(at: indexPath)
     cell.notesLabel.text = note.text
-    cell.lastUpdatedLabel.text = "Last Updated: \(note.lastUpdated.formatted())"
+    if let date = note.lastUpdated {
+      cell.lastUpdatedLabel.text = "Last Updated: \(date.formatted())"
+    }
     return cell
   }
   
