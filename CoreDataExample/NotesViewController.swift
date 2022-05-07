@@ -10,13 +10,9 @@ import CoreData
 
 class NotesViewController: UIViewController {
   
-  private var resultsController: NSFetchedResultsController<Note>!
-  private var selectedIndexPath: IndexPath?
+  var coreDataStack: CoreDataStack!
   
-  private var context: NSManagedObjectContext {
-    let delegate = UIApplication.shared.delegate as! AppDelegate
-    return delegate.persistentContainer.viewContext
-  }
+  private var resultsController: NSFetchedResultsController<Note>!
   
   @IBOutlet private var notesTableView: UITableView!
   
@@ -44,18 +40,30 @@ class NotesViewController: UIViewController {
   override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
     switch segue.identifier {
     case "AddNote":
-      if let noteViewController = segue.destination as? NoteViewController {
-        noteViewController.delegate = self
-      }
+      guard
+        let noteViewController = segue.destination as? NoteViewController
+      else { fatalError("Storyboard not setup as expected") }
+      
+      let childContext = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+      childContext.parent = coreDataStack.mainContext
+      
+      noteViewController.context = childContext
+      noteViewController.delegate = self
     case "EditNote":
-      if
+      guard
         let noteViewController = segue.destination as? NoteViewController,
-        let indexPath = selectedIndexPath
-      {
-        noteViewController.delegate = self
-        let note = resultsController.object(at: indexPath)
-        noteViewController.noteToEdit = note
-      }
+        let indexPath = notesTableView.indexPathForSelectedRow
+      else { fatalError("Storyboard not setup as expected") }
+      
+      let childContext = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+      childContext.parent = coreDataStack.mainContext
+      
+      let note = resultsController.object(at: indexPath)
+      let childNote = childContext.object(with: note.objectID) as? Note
+      
+      noteViewController.context = childContext
+      noteViewController.note = childNote
+      noteViewController.delegate = self
     default:
       break
     }
@@ -67,9 +75,9 @@ class NotesViewController: UIViewController {
     request.sortDescriptors = [sort]
     do {
       resultsController = NSFetchedResultsController(fetchRequest: request,
-                                             managedObjectContext: context,
-                                             sectionNameKeyPath: nil,
-                                             cacheName: nil)
+                                                     managedObjectContext: coreDataStack.mainContext,
+                                                     sectionNameKeyPath: nil,
+                                                     cacheName: nil)
       resultsController.delegate = self
       try resultsController.performFetch()
     } catch let error as NSError {
@@ -81,7 +89,6 @@ class NotesViewController: UIViewController {
 extension NotesViewController: UITableViewDelegate {
   
   func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-    selectedIndexPath = indexPath
     performSegue(withIdentifier: "EditNote", sender: nil)
   }
 }
@@ -112,8 +119,8 @@ extension NotesViewController: UITableViewDataSource {
     switch editingStyle {
     case .delete:
       let note = resultsController.object(at: indexPath)
-      context.delete(note)
-      (UIApplication.shared.delegate as! AppDelegate).saveContext()
+      coreDataStack.mainContext.delete(note)
+      coreDataStack.saveContext()
     default:
       break
     }
@@ -122,15 +129,24 @@ extension NotesViewController: UITableViewDataSource {
 
 extension NotesViewController: NoteViewControllerDelegate {
   
-  func noteViewControllerDidFinishAdding(_ noteViewController: NoteViewController) {
+  func noteViewControllerDidFinishSaving(_ noteViewController: NoteViewController) {
+    guard
+      let childContext = noteViewController.context,
+      childContext.hasChanges
+    else {
+      self.dismiss(animated: true, completion: nil)
+      return
+    }
+    
+    childContext.perform {
+      do {
+        try childContext.save()
+      } catch let error as NSError {
+        fatalError("Unresolved error \(error), \(error.userInfo)")
+      }
+      self.coreDataStack.saveContext()
+    }
     self.dismiss(animated: true, completion: nil)
-    (UIApplication.shared.delegate as! AppDelegate).saveContext()
-  }
-  
-  func noteViewControllerDidFinishEditing(_ noteViewController: NoteViewController) {
-    self.dismiss(animated: true, completion: nil)
-    (UIApplication.shared.delegate as! AppDelegate).saveContext()
-    selectedIndexPath = nil
   }
   
   func noteViewControllerDidCancel(_ noteViewController: NoteViewController) {

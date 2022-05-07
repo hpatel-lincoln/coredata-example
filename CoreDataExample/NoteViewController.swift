@@ -9,20 +9,15 @@ import UIKit
 import CoreData
 
 protocol NoteViewControllerDelegate: AnyObject {
-  func noteViewControllerDidFinishAdding(_ noteViewController: NoteViewController)
-  func noteViewControllerDidFinishEditing(_ noteViewController: NoteViewController)
+  func noteViewControllerDidFinishSaving(_ noteViewController: NoteViewController)
   func noteViewControllerDidCancel(_ noteViewController: NoteViewController)
 }
 
 class NoteViewController: UIViewController {
   
+  var context: NSManagedObjectContext!
+  var note: Note?
   weak var delegate: NoteViewControllerDelegate?
-  var noteToEdit: Note?
-  
-  private var context: NSManagedObjectContext {
-    let delegate = UIApplication.shared.delegate as! AppDelegate
-    return delegate.persistentContainer.viewContext
-  }
   
   @IBOutlet private var noteTextView: UITextView!
   @IBOutlet private var doneBarButton: UIBarButtonItem!
@@ -34,18 +29,16 @@ class NoteViewController: UIViewController {
     noteTextView.textContainerInset = .zero
     noteTextView.textContainer.lineFragmentPadding = 0.0
     noteTextView.delegate = self
+    noteTextView.becomeFirstResponder()
     
     tapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(onTap(sender:)))
     tapGestureRecognizer?.cancelsTouchesInView = false
     view.addGestureRecognizer(tapGestureRecognizer)
-  }
-  
-  override func viewWillAppear(_ animated: Bool) {
-    super.viewWillAppear(animated)
     
-    if let noteToEdit = noteToEdit {
-      noteTextView.text = noteToEdit.text
+    if note == nil {
+      note = Note(context: context)
     }
+    configureView()
   }
   
   @IBAction private func didTapCancel(sender: UIBarButtonItem) {
@@ -53,22 +46,26 @@ class NoteViewController: UIViewController {
   }
   
   @IBAction private func didTapDone(sender: UIBarButtonItem) {
-    guard let text = noteTextView.text else { return }
-    
-    if let note = noteToEdit {
-      note.text = text
-      note.lastUpdated = Date()
-      delegate?.noteViewControllerDidFinishEditing(self)
-    } else {
-      let note = Note(entity: Note.entity(), insertInto: context)
-      note.text = text
-      note.lastUpdated = Date()
-      delegate?.noteViewControllerDidFinishAdding(self)
-    }
+    updateNote()
+    delegate?.noteViewControllerDidFinishSaving(self)
   }
   
   @objc private func onTap(sender: UITapGestureRecognizer) {
     noteTextView.resignFirstResponder()
+  }
+  
+  private func configureView() {
+    if let note = note {
+      noteTextView.text = note.text
+      doneBarButton.isEnabled = note.text.isEmpty == false
+    }
+  }
+  
+  private func updateNote() {
+    if let note = note {
+      note.text = noteTextView.text
+      note.lastUpdated = Date()
+    }
   }
 }
 
