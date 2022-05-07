@@ -158,19 +158,25 @@ extension NotesViewController: NSFetchedResultsControllerDelegate {
   
   func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange anObject: Any, at indexPath: IndexPath?, for type: NSFetchedResultsChangeType, newIndexPath: IndexPath?) {
     
-    if let indexPath = indexPath ?? newIndexPath {
-      switch type {
-      case .insert:
-        notesTableView.insertRows(at: [indexPath], with: .automatic)
-      case .delete:
-        notesTableView.deleteRows(at: [indexPath], with: .automatic)
-      case .move:
-        notesTableView.reloadData()
-      case .update:
-        notesTableView.reloadRows(at: [indexPath], with: .automatic)
-      default:
-        break
-      }
+    switch type {
+    case .insert:
+      guard let newIndexPath = newIndexPath else { return }
+      notesTableView.insertRows(at: [newIndexPath], with: .automatic)
+    case .delete:
+      guard let indexPath = indexPath else { return }
+      notesTableView.deleteRows(at: [indexPath], with: .automatic)
+    case .move:
+      guard
+        let indexPath = indexPath,
+        let newIndexPath = newIndexPath
+      else { return }
+      notesTableView.moveRow(at: indexPath, to: newIndexPath)
+      notesTableView.reloadRows(at: [newIndexPath], with: .automatic)
+    case .update:
+      guard let indexPath = indexPath else { return }
+      notesTableView.reloadRows(at: [indexPath], with: .automatic)
+    default:
+      notesTableView.reloadData()
     }
   }
 }
