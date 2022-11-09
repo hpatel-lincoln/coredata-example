@@ -9,26 +9,24 @@ import CoreData
 
 class CoreDataStack {
   
+  let container: NSPersistentCloudKitContainer
+  let mainContext: NSManagedObjectContext
+  
   private let modelName: String
   
   init(modelName: String) {
     self.modelName = modelName
-  }
-  
-  lazy var container: NSPersistentCloudKitContainer = {
-    let container = NSPersistentCloudKitContainer(name: modelName)
+    
+    container = NSPersistentCloudKitContainer(name: modelName)
     container.loadPersistentStores { storeDescription, error in
       if let error = error as NSError? {
         fatalError("Unresolved error \(error), \(error.userInfo)")
       }
     }
-    container.viewContext.automaticallyMergesChangesFromParent = true
-    return container
-  }()
-  
-  lazy var mainContext: NSManagedObjectContext = {
-    return container.viewContext
-  }()
+    
+    mainContext = container.viewContext
+    mainContext.automaticallyMergesChangesFromParent = true
+  }
   
   func saveContext () {
     guard mainContext.hasChanges else { return }

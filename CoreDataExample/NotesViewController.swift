@@ -26,11 +26,8 @@ class NotesViewController: UIViewController {
     notesTableView.dataSource = self
     notesTableView.rowHeight = UITableView.automaticDimension
     notesTableView.estimatedRowHeight = 100
-  }
-  
-  override func viewWillAppear(_ animated: Bool) {
-    super.viewWillAppear(animated)
-    refresh()
+    
+    fetchNotes()
   }
   
   @IBAction private func didTapAdd(sender: UIBarButtonItem) {
@@ -69,16 +66,17 @@ class NotesViewController: UIViewController {
     }
   }
   
-  private func refresh() {
+  private func fetchNotes() {
     let request = Note.fetchRequest()
     let sort = NSSortDescriptor(key: #keyPath(Note.lastUpdated), ascending: false)
     request.sortDescriptors = [sort]
+    resultsController = NSFetchedResultsController(fetchRequest: request,
+                                                   managedObjectContext: coreDataStack.mainContext,
+                                                   sectionNameKeyPath: nil,
+                                                   cacheName: nil)
+    resultsController.delegate = self
     do {
-      resultsController = NSFetchedResultsController(fetchRequest: request,
-                                                     managedObjectContext: coreDataStack.mainContext,
-                                                     sectionNameKeyPath: nil,
-                                                     cacheName: nil)
-      resultsController.delegate = self
+      try coreDataStack.mainContext.setQueryGenerationFrom(.current)
       try resultsController.performFetch()
     } catch let error as NSError {
       print("Could not fetch. \(error), \(error.userInfo)")
@@ -156,6 +154,10 @@ extension NotesViewController: NoteViewControllerDelegate {
 
 extension NotesViewController: NSFetchedResultsControllerDelegate {
   
+  func controllerWillChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
+    notesTableView.beginUpdates()
+  }
+  
   func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange anObject: Any, at indexPath: IndexPath?, for type: NSFetchedResultsChangeType, newIndexPath: IndexPath?) {
     
     switch type {
@@ -178,5 +180,9 @@ extension NotesViewController: NSFetchedResultsControllerDelegate {
     default:
       notesTableView.reloadData()
     }
+  }
+  
+  func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
+    notesTableView.endUpdates()
   }
 }
